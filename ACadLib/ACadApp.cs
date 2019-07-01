@@ -40,6 +40,7 @@ namespace ACadLib
         public void Initialize()
         {
             // Get the Active Document
+            // ReSharper disable once AccessToStaticMemberViaDerivedType
             ActiveDocument = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
 
             // Get the active editor
