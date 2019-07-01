@@ -8,11 +8,14 @@ using Autodesk.AutoCAD.Runtime;
 using System.Diagnostics;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
-using Autodesk.AutoCAD.EditorInput;
+using Autodesk.AutoCAD;
 using Autodesk.Civil.ApplicationServices;
 using Autodesk.Civil.DatabaseServices;
 using TransactionManager = Autodesk.AutoCAD.DatabaseServices.TransactionManager;
 using UserApp;
+using UserApp.ViewModels;
+
+using ACadLib.Utilities;
 
 namespace ACadLib
 {
@@ -22,17 +25,15 @@ namespace ACadLib
     public class ACadApp : IExtensionApplication
     {
 
-        public Editor ACadEditor { get; private set; }
-
         public CivilDocument CDocument { get; private set; }
 
         public Document ActiveDocument { get; private set; }
 
-        public List<Network> PipeNetworks { get; private set; }
 
         private TransactionManager _transactionManager;
-
         private MainWindow _mainWindow;
+        private MainWindowViewModel _mainWindowVm;
+        private ACadLogger _logger;
 
         /// <summary>
         /// Initialization Function for the application
@@ -43,19 +44,17 @@ namespace ACadLib
             // ReSharper disable once AccessToStaticMemberViaDerivedType
             ActiveDocument = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
 
-            // Get the active editor
-            // ReSharper disable once AccessToStaticMemberViaDerivedType
-            ACadEditor = ActiveDocument.Editor;
-
-            ACadEditor.WriteMessage("Let's Try This....");
 
             // Get the active document
             CDocument = CivilApplication.ActiveDocument;
 
+            // Set the Transaction Manager
             _transactionManager = ActiveDocument.TransactionManager;
 
-            var ids = GetPipeNetworksIds();
+            // Set the logger
+            _logger = new ACadLogger(ActiveDocument);
 
+            _logger.Log("Application Loaded");
         }
 
         /// <summary>
@@ -63,13 +62,33 @@ namespace ACadLib
         /// </summary>
         public void Terminate()
         {
-
+            _logger.Log("Application Closing");
         }
 
         [CommandMethod("AUTOSHEET")]
         public void StartApplication()
         {
-            if (_mainWindow == null) _mainWindow = new MainWindow();
+            if ( _mainWindow == null )
+            {
+                _mainWindow = new MainWindow();
+                _mainWindowVm = _mainWindow.DataContext as MainWindowViewModel;
+                _mainWindow.Closed += MainWindowOnClosing;
+
+                _logger.Log("Main Window Created");
+            }
+            else
+                ActiveDocument.Editor.WriteMessage("Window Already Open");
+        }
+
+        /// <summary>
+        /// When the window is closing run this
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void MainWindowOnClosing(object sender, EventArgs e)
+        {
+            _mainWindow = null;
+            _mainWindowVm = null;
         }
 
         private ObjectIdCollection GetPipeNetworksIds()
@@ -79,7 +98,6 @@ namespace ACadLib
             if ( CDocument.GetPipeNetworkIds() != null )
                 return CDocument.GetPipeNetworkIds();
 
-            ACadEditor.WriteMessage("\nThere are no pipe networks to parse.");
             return new ObjectIdCollection();
         }
     }
