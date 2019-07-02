@@ -4,22 +4,68 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using Autodesk.AutoCAD.ApplicationServices;
+using Application = Autodesk.AutoCAD.ApplicationServices.Core.Application;
 
 namespace ACadLib.Utilities
 {
+    /// <summary>
+    /// Simple Logging Class for 
+    /// </summary>
     public class ACadLogger
     {
-        private readonly Document _activeDocument;
 
-        public ACadLogger(Document document)
+        /// <summary>
+        /// The Current Set Logging Level
+        /// </summary>
+        public LogLevel ActiveLogLevel { get; set; }
+
+        /// <summary>
+        /// Default Constructor that sets the logging level to Debug
+        /// </summary>
+        public ACadLogger() => ActiveLogLevel = LogLevel.Debug;
+
+        /// <summary>
+        /// Constructor that requires a logging level
+        /// </summary>
+        /// <param name="level">The Logging Level</param>
+        public ACadLogger(LogLevel level) => ActiveLogLevel = level;
+
+        /// <summary>
+        /// Log a message to the console
+        /// </summary>
+        /// <param name="message">The message</param>
+        public static void Log(object message)
         {
-            _activeDocument = document;
+            Application.DocumentManager.MdiActiveDocument
+                .Editor
+                .WriteMessage($"[{DateTime.Now}] - {message}");
         }
 
-        public void Log(object message)
+        /// <summary>
+        /// Log a message to the console if the current log
+        /// level is less than or equal the current log level
+        /// </summary>
+        /// <param name="message">The message</param>
+        /// <param name="level">The log level</param>
+        public void Log(object message, LogLevel level)
         {
-            _activeDocument.Editor.WriteMessage($"\n[{DateTime.Now}] - {message}");
+            if (level <= ActiveLogLevel)
+                Log(message);
+        }
+
+        /// <summary>
+        /// Logging Level Enumeration
+        /// </summary>
+        public enum LogLevel
+        {
+            Debug,
+
+            Info,
+
+            Warn,
+
+            Error
         }
     }
+
 }

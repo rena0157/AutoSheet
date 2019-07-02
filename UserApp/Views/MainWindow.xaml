@@ -13,7 +13,6 @@
              Title="AutoSheet"
              >
     <Grid>
-        <Button Width="100" Height="20" Command="{Binding TestCommand}">Get Network Ids</Button>
-        <TextBlock></TextBlock>
+
     </Grid>
 </Window>

@@ -16,21 +16,34 @@ using UserApp;
 using UserApp.ViewModels;
 
 using ACadLib.Utilities;
+using Application = Autodesk.AutoCAD.ApplicationServices.Core.Application;
 
 namespace ACadLib
 {
     /// <summary>
-    /// Application that will be loaded into AutoCAD
+    /// Main Application that is loaded into AutoCAD
     /// </summary>
     public class ACadApp : IExtensionApplication
     {
+        /// <summary>
+        /// The Active Document for core AutoCAD Functions
+        /// </summary>
+        public static Document ActiveDocument 
+            => Application.DocumentManager.MdiActiveDocument;
 
-        public CivilDocument CDocument { get; private set; }
+        /// <summary>
+        /// The Transaction Manager for AutoCAD Entities
+        /// </summary>
+        public static TransactionManager TransManager
+            => ActiveDocument.TransactionManager;
 
-        public Document ActiveDocument { get; private set; }
+        /// <summary>
+        /// The Civil Document For Civil Entities
+        /// </summary>
+        public static CivilDocument CivilDoc
+            => CivilApplication.ActiveDocument;
 
 
-        private TransactionManager _transactionManager;
         private MainWindow _mainWindow;
         private MainWindowViewModel _mainWindowVm;
         private ACadLogger _logger;
@@ -40,21 +53,10 @@ namespace ACadLib
         /// </summary>
         public void Initialize()
         {
-            // Get the Active Document
-            // ReSharper disable once AccessToStaticMemberViaDerivedType
-            ActiveDocument = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
-
-
-            // Get the active document
-            CDocument = CivilApplication.ActiveDocument;
-
-            // Set the Transaction Manager
-            _transactionManager = ActiveDocument.TransactionManager;
-
             // Set the logger
-            _logger = new ACadLogger(ActiveDocument);
+            _logger = new ACadLogger(ACadLogger.LogLevel.Debug);
 
-            _logger.Log("Application Loaded");
+            ACadLogger.Log("Application Loaded");
         }
 
         /// <summary>
@@ -62,9 +64,12 @@ namespace ACadLib
         /// </summary>
         public void Terminate()
         {
-            _logger.Log("Application Closing");
+            _logger.Log("Application Closing", ACadLogger.LogLevel.Debug);
         }
 
+        /// <summary>
+        /// Start the application via the Command Line
+        /// </summary>
         [CommandMethod("AUTOSHEET")]
         public void StartApplication()
         {
@@ -74,14 +79,14 @@ namespace ACadLib
                 _mainWindowVm = _mainWindow.DataContext as MainWindowViewModel;
                 _mainWindow.Closed += MainWindowOnClosing;
 
-                _logger.Log("Main Window Created");
+                _logger.Log("Main Window Created", ACadLogger.LogLevel.Debug);
             }
             else
-                ActiveDocument.Editor.WriteMessage("Window Already Open");
+                _logger.Log("Window Already Open", ACadLogger.LogLevel.Debug);
         }
 
         /// <summary>
-        /// When the window is closing run this
+        /// Clean up resources when the main window closes
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
@@ -89,16 +94,7 @@ namespace ACadLib
         {
             _mainWindow = null;
             _mainWindowVm = null;
-        }
-
-        private ObjectIdCollection GetPipeNetworksIds()
-        {
-            // Check that there is a pipe network to parse
-            // and if there is then return the network ids
-            if ( CDocument.GetPipeNetworkIds() != null )
-                return CDocument.GetPipeNetworkIds();
-
-            return new ObjectIdCollection();
+            _logger.Log("Main Window Closed", ACadLogger.LogLevel.Debug);
         }
     }
 }
