@@ -23,7 +23,7 @@ namespace ACadLib
     /// <summary>
     /// Main Application that is loaded into AutoCAD
     /// </summary>
-    public class ACadApp : IExtensionApplication
+    public class BootstrapApp : IExtensionApplication
     {
         /// <summary>
         /// The Active Document for core AutoCAD Functions
