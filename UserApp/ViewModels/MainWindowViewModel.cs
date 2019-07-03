@@ -14,6 +14,11 @@ namespace UserApp.ViewModels
         private Window _window;
         private bool _isVisible;
 
+        public MainWindowViewModel()
+        {
+
+        }
+
         public MainWindowViewModel(Window window)
         {
             _window = window;

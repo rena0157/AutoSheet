@@ -10,9 +10,21 @@
              d:DataContext="{d:DesignInstance Type=viewModels:MainWindowViewModel, IsDesignTimeCreatable=True}"
 
              WindowStyle="SingleBorderWindow"
-             Title="AutoSheet"
-             >
-    <Grid>
+             Title="AutoSheet">
 
-    </Grid>
+
+            <Grid>
+                <TabControl>
+                    <TabItem Header="Test">
+                        <Label>
+                            Hello
+                        </Label>
+                    </TabItem>
+
+                    <TabItem Header="Test2">
+
+                    </TabItem>
+                </TabControl>
+            </Grid>
+
 </Window>
