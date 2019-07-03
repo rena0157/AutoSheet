@@ -38,7 +38,7 @@ namespace ACadLib.Utilities
         {
             Application.DocumentManager.MdiActiveDocument
                 .Editor
-                .WriteMessage($"[{DateTime.Now}] - {message}");
+                .WriteMessage($"\n[{DateTime.Now}] - {message}");
         }
 
         /// <summary>

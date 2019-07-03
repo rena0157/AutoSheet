@@ -21,7 +21,7 @@ using Application = Autodesk.AutoCAD.ApplicationServices.Core.Application;
 namespace ACadLib
 {
     /// <summary>
-    /// Main Application that is loaded into AutoCAD
+    /// Main bootstrapping application for AutoCAD
     /// </summary>
     public class BootstrapApp : IExtensionApplication
     {
@@ -43,20 +43,15 @@ namespace ACadLib
         public static CivilDocument CivilDoc
             => CivilApplication.ActiveDocument;
 
-
-        private MainWindow _mainWindow;
-        private MainWindowViewModel _mainWindowVm;
-        private ACadLogger _logger;
+        public static AutoSheet AutoSheetApp { get; private set; }
 
         /// <summary>
         /// Initialization Function for the application
         /// </summary>
         public void Initialize()
         {
-            // Set the logger
-            _logger = new ACadLogger(ACadLogger.LogLevel.Debug);
-
             ACadLogger.Log("Application Loaded");
+            AutoSheetApp = new AutoSheet();
         }
 
         /// <summary>
@@ -64,37 +59,15 @@ namespace ACadLib
         /// </summary>
         public void Terminate()
         {
-            _logger.Log("Application Closing", ACadLogger.LogLevel.Debug);
+
         }
 
-        /// <summary>
-        /// Start the application via the Command Line
-        /// </summary>
         [CommandMethod("AUTOSHEET")]
-        public void StartApplication()
+        public void AutoSheetCommand()
         {
-            if ( _mainWindow == null )
-            {
-                _mainWindow = new MainWindow();
-                _mainWindowVm = _mainWindow.DataContext as MainWindowViewModel;
-                _mainWindow.Closed += MainWindowOnClosing;
-
-                _logger.Log("Main Window Created", ACadLogger.LogLevel.Debug);
-            }
-            else
-                _logger.Log("Window Already Open", ACadLogger.LogLevel.Debug);
+            ACadLogger.Log("Starting AutoSheet Command");
+            AutoSheetApp.StartApplication();
         }
 
-        /// <summary>
-        /// Clean up resources when the main window closes
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void MainWindowOnClosing(object sender, EventArgs e)
-        {
-            _mainWindow = null;
-            _mainWindowVm = null;
-            _logger.Log("Main Window Closed", ACadLogger.LogLevel.Debug);
-        }
     }
 }
