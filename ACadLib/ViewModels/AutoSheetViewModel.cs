@@ -53,6 +53,11 @@ namespace ACadLib.ViewModels
 
             BrowseCommand = new CommandBase(() => { CurrentPath = GetFileNameFileDialog(); });
             UpdateCommand = new CommandBase((() => {AutoSheet.OpenDesignSheet(CurrentPath);}));
+            ExportCommand = new CommandBase(() =>
+            {
+                AutoSheet.ExportPipeData(PipeNetworks[SelectedNetworkName]);
+            });
+
         }
 
 
@@ -68,6 +73,7 @@ namespace ACadLib.ViewModels
         {
             get
             {
+                _pipeNetworks = new Dictionary<string, Network>();
                 foreach (var network in AutoSheet.GetPipeNetworks())
                     _pipeNetworks.Add(network.Name, network);
 
@@ -115,6 +121,8 @@ namespace ACadLib.ViewModels
         public ICommand BrowseCommand { get; set; }
 
         public ICommand UpdateCommand { get; set; }
+
+        public ICommand ExportCommand { get; set; }
 
         #endregion
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -91,7 +92,10 @@ namespace ACadLib
                 }
                 catch ( System.Exception )
                 {
+                    // Dispose the Design Sheet and reopen
                     DesignSheet.Dispose();
+                    DesignSheet = null;
+                    OpenDesignSheet(filePath);
                 }
 
                 // Since the Workbook is already open return
@@ -99,12 +103,38 @@ namespace ACadLib
             }
             try
             {
-                DesignSheet = new DesignSheet(filePath, "PipeData");
+                DesignSheet = new DesignSheet(filePath, "PipeDataXlOut", "PipeDataXlIn");
             }
             catch (COMException e)
             {
                 DesignSheet = null;
                 ACadLogger.Log($"Design Sheet could not be opened: {e}");
+            }
+        }
+
+        public static void ExportPipeData(Network pipeNetwork)
+        {
+            if (DesignSheet == null) return;
+
+            var xlIn = DesignSheet.PipeDataXlIn;
+
+            const char handleRow = 'A';
+            const char fromRow = 'B';
+            var colNumber = 2;
+
+            var pipesIds = pipeNetwork.GetPipeIds();
+
+
+            using (var ts = BootstrapApp.TransManager.StartTransaction())
+            {
+                foreach ( ObjectId id in pipesIds )
+                {
+                    var pipe = ts.GetObject(id, OpenMode.ForRead) as Pipe;
+
+                    xlIn.Range[$"{handleRow}{colNumber}"].Value2 = pipe.Handle.Value;
+                    // xlIn.Range[$"{fromRow}{colNumber}"].Value2 = pipe.StartStructureId;
+                    colNumber++;
+                }
             }
         }
 
@@ -121,8 +151,11 @@ namespace ACadLib
         private static void AutoSheetMainWindowOnClosed(object sender, EventArgs e)
         {
             _autoSheetMainWindow = null;
+
+            if ( DesignSheet == null ) return;
             DesignSheet.Quit();
             DesignSheet = null;
+
         }
 
         /// <summary>
