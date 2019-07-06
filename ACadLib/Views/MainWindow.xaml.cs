@@ -19,12 +19,12 @@ namespace UserApp
     /// <summary>
     /// Interaction Logic for the Main Window
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class AutoSheetMainWindow : Window
     {
-        public MainWindow()
+        public AutoSheetMainWindow()
         {
             InitializeComponent();
-            DataContext = new ViewModels.MainWindowViewModel(this);
+            DataContext = new ViewModels.AutoSheetViewModel(this);
         }
     }
 }

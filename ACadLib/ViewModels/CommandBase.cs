@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
-namespace UserApp.ViewModels
+namespace ACadLib.ViewModels
 {
     /// <summary>
     /// A Basic Command the executes an action

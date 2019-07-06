@@ -12,8 +12,6 @@ using Autodesk.AutoCAD;
 using Autodesk.Civil.ApplicationServices;
 using Autodesk.Civil.DatabaseServices;
 using TransactionManager = Autodesk.AutoCAD.DatabaseServices.TransactionManager;
-using UserApp;
-using UserApp.ViewModels;
 
 using ACadLib.Utilities;
 using Application = Autodesk.AutoCAD.ApplicationServices.Core.Application;
@@ -23,6 +21,7 @@ namespace ACadLib
     /// <summary>
     /// Main bootstrapping application for AutoCAD
     /// </summary>
+    // ReSharper disable once ClassNeverInstantiated.Global
     public class BootstrapApp : IExtensionApplication
     {
         /// <summary>
@@ -43,15 +42,12 @@ namespace ACadLib
         public static CivilDocument CivilDoc
             => CivilApplication.ActiveDocument;
 
-        public static AutoSheet AutoSheetApp { get; private set; }
-
         /// <summary>
         /// Initialization Function for the application
         /// </summary>
         public void Initialize()
         {
             ACadLogger.Log("Application Loaded");
-            AutoSheetApp = new AutoSheet();
         }
 
         /// <summary>
@@ -62,12 +58,20 @@ namespace ACadLib
 
         }
 
+        #region Command Methods
+
+        /// <summary>
+        /// Command That will run AutoSheet and open the
+        /// AutoSheet main Window
+        /// </summary>
         [CommandMethod("AUTOSHEET")]
         public void AutoSheetCommand()
         {
             ACadLogger.Log("Starting AutoSheet Command");
-            AutoSheetApp.StartApplication();
+            AutoSheet.StartApplication();
         }
+
+        #endregion
 
     }
 }
