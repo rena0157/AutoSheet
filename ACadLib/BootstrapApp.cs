@@ -55,7 +55,8 @@ namespace ACadLib
         /// </summary>
         public void Terminate()
         {
-
+            if (AutoSheet.DesignSheet != null)
+                AutoSheet.DesignSheet.Dispose();
         }
 
         #region Command Methods

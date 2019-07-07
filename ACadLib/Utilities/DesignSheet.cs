@@ -1,41 +1,46 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using Microsoft.Office.Interop.Excel;
 using XlApplication = Microsoft.Office.Interop.Excel.Application;
 
 namespace ACadLib.Utilities
 {
+    /// <summary>
+    /// Represents a Design sheet in Excel
+    /// </summary>
     public class DesignSheet : IDisposable
     {
         /// <summary>
         /// The Excel Application
         /// </summary>
-        public XlApplication XlApp;
+        public readonly XlApplication XlApp;
 
         /// <summary>
         /// The Workbook
         /// </summary>
-        public Workbook XlWorkbook;
+        private readonly Workbook _xlWorkbook;
 
         /// <summary>
         /// Worksheet that AutoCAD Will read from
         /// </summary>
-        public Worksheet PipeDataXlOut;
+        private readonly Worksheet _pipeDataXlOut;
 
         /// <summary>
         /// Worksheet that AutoCAD Will write to
         /// </summary>
-        public Worksheet PipeDataXlIn;
+        public readonly Worksheet PipeDataXlIn;
 
         /// <summary>
         /// Dictionary of Named Ranges
         /// </summary>
-        public Dictionary<string, Range> XlWorkbookNames { get; set; }
+        public Dictionary<string, Range> XlWorkbookNames { get; }
 
         /// <summary>
         /// Static class containing the Named Ranges in this Design Sheet
@@ -76,9 +81,16 @@ namespace ACadLib.Utilities
         /// <param name="pipeDataXlIn">The pipe data in sheet name</param>
         public DesignSheet(string filename, string pipeDataXlOut, string pipeDataXlIn)
         {
+            if ( filename == null )
+            {
+                MessageBox.Show("You must provide a filename", "AUTOSHEET ERROR", MessageBoxButton.OK);
+                return;
+            }
+
             if ( !File.Exists(filename) || Path.GetExtension(filename) != ".xlsx" )
             {
-                throw new COMException();
+                MessageBox.Show($"Error Opening File: {filename}", "AUTOSHEET ERROR", MessageBoxButton.OK);
+                return;
             }
 
             XlApp = new XlApplication()
@@ -86,22 +98,22 @@ namespace ACadLib.Utilities
                 Visible = true
             };
 
-            XlWorkbook = null;
-            PipeDataXlOut = null;
+            _xlWorkbook = null;
+            _pipeDataXlOut = null;
             PipeDataXlIn = null;
 
-            XlWorkbook = XlApp.Workbooks.Open(filename);
+            _xlWorkbook = XlApp.Workbooks.Open(filename);
 
             // Get the worksheets
-            PipeDataXlOut = XlWorkbook.Worksheets[pipeDataXlOut];
-            PipeDataXlIn = XlWorkbook.Worksheets[pipeDataXlIn];
+            _pipeDataXlOut = _xlWorkbook.Worksheets[pipeDataXlOut];
+            PipeDataXlIn = _xlWorkbook.Worksheets[pipeDataXlIn];
 
-            if (XlWorkbook == null || PipeDataXlOut == null || PipeDataXlIn == null)
+            if (_xlWorkbook == null || _pipeDataXlOut == null || PipeDataXlIn == null)
                 throw new COMException();
 
             // Get and Set the Workbook names
             XlWorkbookNames = new Dictionary<string, Range>();
-            foreach ( Name name in XlWorkbook.Names )
+            foreach ( Name name in _xlWorkbook.Names )
             {
                 XlWorkbookNames.Add(name.Name, name.RefersToRange);
             }
@@ -109,38 +121,81 @@ namespace ACadLib.Utilities
             ACadLogger.Log("Pipe Data Sheet Opened");
         }
 
+        /// <summary>
+        /// Finalizer for this class
+        /// </summary>
         ~DesignSheet()
         {
             ReleaseUnmanagedResources();
         }
 
-        public void Quit()
+        /// <summary>
+        /// Returns true if the design sheet is ready
+        /// and working properly
+        /// </summary>
+        /// <returns>Returns true if the design sheet is working properly</returns>
+        public bool IsReady()
         {
-            XlWorkbook.Close();
-            XlApp.Quit();
-            Dispose();
+            try
+            {
+                // Try to call the worksheets object
+                var test = XlApp.Worksheets;
+            }
+            catch (System.Exception)
+            {
+                // If anything goes wrong then the sheet is
+                // not working properly
+                return false;
+            }
+
+            return true;
         }
 
-        private void ReleaseUnmanagedResources()
-        {
-            if ( PipeDataXlOut != null )
-                Marshal.FinalReleaseComObject(PipeDataXlOut);
-
-            if ( PipeDataXlIn == null )
-                Marshal.FinalReleaseComObject(PipeDataXlIn);
-
-            if (XlWorkbook != null)
-                Marshal.FinalReleaseComObject(XlWorkbook);
-
-            if (XlApp != null)
-                Marshal.FinalReleaseComObject(XlApp);
-
-        }
-
+        /// <summary>
+        /// Dispose of this object releasing all of its
+        /// unmanaged resources and COM objects
+        /// </summary>
         public void Dispose()
         {
             ReleaseUnmanagedResources();
             GC.SuppressFinalize(this);
         }
+
+        [DllImport("user32.dll")]
+        private static extern int GetWindowThreadProcessId(int hWnd, out int lpdwProcessId);
+
+        /// <summary>
+        /// Get the Excel Process of this object
+        /// </summary>
+        private Process ExcelProcess
+        {
+            get
+            {
+                GetWindowThreadProcessId(XlApp.Hwnd, out var id);
+                return Process.GetProcessById(id);
+            }
+        }
+
+        /// <summary>
+        /// Release all of the unmanaged resources and COM objects
+        /// </summary>
+        private void ReleaseUnmanagedResources()
+        {
+            if ( _pipeDataXlOut != null )
+                Marshal.FinalReleaseComObject(_pipeDataXlOut);
+
+            if ( PipeDataXlIn != null )
+                Marshal.FinalReleaseComObject(PipeDataXlIn);
+
+            if (_xlWorkbook != null)
+                Marshal.FinalReleaseComObject(_xlWorkbook);
+
+            if ( XlApp == null ) return;
+
+            ExcelProcess?.Kill();
+            Marshal.FinalReleaseComObject(XlApp);
+        }
+
+
     }
 }

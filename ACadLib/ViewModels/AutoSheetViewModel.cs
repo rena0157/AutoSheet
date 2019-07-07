@@ -1,13 +1,9 @@
-﻿using System;
+﻿using ACadLib.Utilities;
+using Autodesk.Civil.DatabaseServices;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
-using ACadLib.Utilities;
-using Autodesk.Civil.DatabaseServices;
 using MessageBox = System.Windows.MessageBox;
 
 namespace ACadLib.ViewModels
@@ -52,25 +48,30 @@ namespace ACadLib.ViewModels
 
             _pipeNetworks = new Dictionary<string, Network>();
 
-            BrowseCommand = new CommandBase(() => { CurrentPath = GetFileNameFileDialog(); });
-            OpenDesignSheetCommand = new CommandBase((() => {AutoSheet.OpenDesignSheet(CurrentPath);}));
+            // Get the filename and open it
+            BrowseCommand = new CommandBase(() =>
+            {
+                CurrentPath = GetFileNameFileDialog();
+                OpenDesignSheetHelper();
+            });
+
+            OpenDesignSheetCommand = new CommandBase((() =>
+           {
+               AutoSheet.OpenDesignSheet(CurrentPath);
+           }));
 
             // Run the Export Command
             ExportCommand = new CommandBase(() =>
             {
-                if ( SelectedNetworkName != null )
+                if (OpenDesignSheetHelper())
                     AutoSheet.ExportPipeData(PipeNetworks[SelectedNetworkName]);
-                else
-                    MessageBox.Show("You must select a network", "AutoSheet Error", MessageBoxButton.OK);
             });
 
             // Run the import command
             ImportCommand = new CommandBase(() =>
             {
-                if ( SelectedNetworkName != null )
+                if (OpenDesignSheetHelper())
                     AutoSheet.ImportPipeData(PipeNetworks[SelectedNetworkName]);
-                else
-                    MessageBox.Show("You must select a network", "AutoSheet Error", MessageBoxButton.OK);
             });
         }
 
@@ -103,10 +104,10 @@ namespace ACadLib.ViewModels
         /// </summary>
         public string SelectedNetworkName
         {
-            get => _selectedNetwork?.Name ?? "None";
+            get => _selectedNetwork?.Name;
             set
             {
-                if ( _pipeNetworks.ContainsKey(value) )
+                if (_pipeNetworks.ContainsKey(value))
                     _selectedNetwork = _pipeNetworks[value];
                 RaisePropertyChanged();
                 ACadLogger.Log($"The Selected Network is now: {value}");
@@ -125,6 +126,10 @@ namespace ACadLib.ViewModels
                 RaisePropertyChanged();
             }
         }
+
+        #endregion
+
+        #region Commands
 
         /// <summary>
         /// Opens the File Dialog, gets a filename from the user
@@ -165,6 +170,27 @@ namespace ACadLib.ViewModels
             };
 
             return dialog.ShowDialog() == DialogResult.OK ? dialog.FileName : "";
+        }
+
+        /// <summary>
+        /// Helper Function that Will open the design sheet
+        /// if it is ready and there was a filename specified
+        /// </summary>
+        /// <returns>True if the design sheet is ready</returns>
+        private bool OpenDesignSheetHelper()
+        {
+            // Check to see if there is a supplied filename
+            if (SelectedNetworkName == null)
+            {
+                MessageBox.Show("Not File Specified", "AutoSheet Error", MessageBoxButton.OK);
+                return false;
+            }
+
+            if (AutoSheet.DesignSheet == null || !AutoSheet.DesignSheet.IsReady())
+                AutoSheet.OpenDesignSheet(CurrentPath);
+
+            // Check to see if it failed
+            return AutoSheet.DesignSheet != null;
         }
 
         #endregion

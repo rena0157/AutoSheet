@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using ACadLib.Utilities;
 using ACadLib.Views;
 using Autodesk.AutoCAD.DatabaseServices;
@@ -38,7 +39,7 @@ namespace ACadLib
         /// Get a list of Pipe Networks from the AutoCAD Database
         /// </summary>
         /// <returns>A List of Networks</returns>
-        public static List<Network> GetPipeNetworks()
+        public static IEnumerable<Network> GetPipeNetworks()
         {
             var pipeNetworkIds = BootstrapApp.CivilDoc.GetPipeNetworkIds();
 
@@ -60,7 +61,7 @@ namespace ACadLib
         /// <summary>
         /// The Current Design Sheet
         /// </summary>
-        public static DesignSheet DesignSheet { get; set; }
+        public static DesignSheet DesignSheet { get; private set; }
 
         #endregion
 
@@ -85,31 +86,22 @@ namespace ACadLib
             // Check to make sure that the workbook isn't already open
             if ( DesignSheet != null )
             {
-                // see if it is closed but the COM objects
-                // were not cleaned up properly
-                try
-                {
-                    var test = DesignSheet.XlApp.Worksheets;
-                }
-                catch ( System.Exception )
-                {
-                    // Dispose the Design Sheet and reopen
-                    DesignSheet.Dispose();
-                    DesignSheet = null;
-                    OpenDesignSheet(filePath);
-                }
-
-                // Since the Workbook is already open return
-                return;
+                if ( DesignSheet.IsReady() ) return;
+                // Dispose the Design Sheet and reopen
+                DesignSheet.Dispose();
+                DesignSheet = null;
             }
             try
             {
-                DesignSheet = new DesignSheet(filePath, "PipeDataXlOut", "PipeDataXlIn");
+                DesignSheet 
+                    = new DesignSheet(filePath, "PipeDataXlOut", "PipeDataXlIn");
+                if ( !DesignSheet.IsReady() )
+                    DesignSheet = null;
+
             }
             catch (COMException e)
             {
                 DesignSheet = null;
-                ACadLogger.Log($"Design Sheet could not be opened: {e}");
             }
         }
 
@@ -178,10 +170,11 @@ namespace ACadLib
         /// <param name="network">The network that will be imported</param>
         public static void ImportPipeData(Network network)
         {
-            if (DesignSheet == null) return;
+            // If the design sheet is null or not ready return
+            if (DesignSheet == null || !DesignSheet.IsReady()) return;
 
+            // Ranges
             var sheetRange = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOut];
-            var slopeColumn = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOutSlope];
             var startInvCol = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOutStartInv];
             var endInvCol = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOutEndInv];
 
@@ -209,14 +202,15 @@ namespace ACadLib
 
                         pipe.StartPoint = new Point3d(pipe.StartPoint.X, pipe.StartPoint.Y, startInv);
                         pipe.EndPoint = new Point3d(pipe.EndPoint.X,pipe.EndPoint.Y,endInv);
+
+                        // TODO: Need to reconnect the structures to the pipes
                     }
                     catch ( COMException )
                     {
-                        continue;
                     }
-
                 }
 
+                // Commit the changes to the database
                 ts.Commit();
             }
 
@@ -237,7 +231,7 @@ namespace ACadLib
             _autoSheetMainWindow = null;
 
             if ( DesignSheet == null ) return;
-            DesignSheet.Quit();
+            DesignSheet.Dispose();
             DesignSheet = null;
 
         }
