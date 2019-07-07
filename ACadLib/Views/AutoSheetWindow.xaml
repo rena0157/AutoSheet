@@ -84,7 +84,7 @@
                     VerticalAlignment="Top" 
                     VerticalContentAlignment="Center"
                     MinWidth="126"
-                    Command="{Binding UpdateCommand}" 
+                    Command="{Binding OpenDesignSheetCommand}" 
                     MinHeight="26"
             />
         </StackPanel>
@@ -114,7 +114,8 @@
             <Button Content="Import Pipe Data" 
                     HorizontalAlignment="Left" 
                     VerticalAlignment="Top"
-                    Margin="10,0,0,0"/>
+                    Margin="10,0,0,0"
+                    Command="{Binding ImportCommand}"/>
 
             <CheckBox Content="Automatic" 
                       HorizontalAlignment="Left" 

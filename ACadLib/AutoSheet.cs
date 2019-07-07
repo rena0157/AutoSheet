@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using ACadLib.Utilities;
 using ACadLib.Views;
 using Autodesk.AutoCAD.DatabaseServices;
+using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 using Autodesk.Civil.DatabaseServices;
 using Microsoft.Office.Interop.Excel;
@@ -112,30 +113,113 @@ namespace ACadLib
             }
         }
 
+        /// <summary>
+        /// Exports data to the Design Sheet in the XlIn Sheet
+        /// </summary>
+        /// <param name="pipeNetwork">The pipe network that is to be
+        /// exported</param>
         public static void ExportPipeData(Network pipeNetwork)
         {
+            // If there is no active design sheet then nothing can be
+            // exported
             if (DesignSheet == null) return;
 
+            // Get the right tab from the design sheet
             var xlIn = DesignSheet.PipeDataXlIn;
 
-            const char handleRow = 'A';
-            const char fromRow = 'B';
-            var colNumber = 2;
+            // Column Constants
+            const char handleColumn = 'A';
+            const char fromColumn = 'B';
+            const char toColumn = 'C';
+            const char lengthColumn = 'D';
+            const char slopeColumn = 'E';
+            const char innerDiaColumn = 'F';
+            const char startInvColumn = 'G';
+            const char endInvColumn = 'H';
 
+            // The current row/pipe number
+            var rowNumber = 2;
+
+            // All of the pipe Ids from the network
             var pipesIds = pipeNetwork.GetPipeIds();
 
-
+            // Access all of the data and place it into the excel sheet
             using (var ts = BootstrapApp.TransManager.StartTransaction())
             {
                 foreach ( ObjectId id in pipesIds )
                 {
                     var pipe = ts.GetObject(id, OpenMode.ForRead) as Pipe;
+                    if (pipe != null)
+                        xlIn.Range[$"{handleColumn}{rowNumber}"].Value2 = pipe.Handle.Value;
+                    
+                    var startStructure = ts.GetObject(pipe.StartStructureId, OpenMode.ForRead) as Structure;
+                    if (startStructure != null)
+                        xlIn.Range[$"{fromColumn}{rowNumber}"].Value2 = startStructure.Name;
 
-                    xlIn.Range[$"{handleRow}{colNumber}"].Value2 = pipe.Handle.Value;
-                    // xlIn.Range[$"{fromRow}{colNumber}"].Value2 = pipe.StartStructureId;
-                    colNumber++;
+                    var endStructure = ts.GetObject(pipe.EndStructureId, OpenMode.ForRead) as Structure;
+                    if (endStructure != null)
+                        xlIn.Range[$"{toColumn}{rowNumber}"].Value2 = endStructure.Name;
+
+                    xlIn.Range[$"{lengthColumn}{rowNumber}"].Value2 = pipe.Length2DCenterToCenter;
+                    xlIn.Range[$"{slopeColumn}{rowNumber}"].Value2 = pipe.Slope;
+                    xlIn.Range[$"{innerDiaColumn}{rowNumber}"].Value2 = pipe.InnerDiameterOrWidth;
+                    xlIn.Range[$"{startInvColumn}{rowNumber}"].Value2 = pipe.StartPoint.Z;
+                    xlIn.Range[$"{endInvColumn}{rowNumber}"].Value2 = pipe.EndPoint.Z;
+
+                    // Increment to the next row for the next pipe
+                    rowNumber++;
                 }
             }
+        }
+
+        /// <summary>
+        /// Imports Pipe Data into Excel
+        /// </summary>
+        /// <param name="network">The network that will be imported</param>
+        public static void ImportPipeData(Network network)
+        {
+            if (DesignSheet == null) return;
+
+            var sheetRange = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOut];
+            var slopeColumn = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOutSlope];
+            var startInvCol = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOutStartInv];
+            var endInvCol = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOutEndInv];
+
+            using ( var ts = BootstrapApp.TransManager.StartTransaction() )
+            {
+                BootstrapApp.ActiveDocument.LockDocument();
+                var pipeIds = network.GetPipeIds();
+
+                foreach ( ObjectId pipeId in pipeIds )
+                {
+                    var pipe = ts.GetObject(pipeId, OpenMode.ForWrite) as Pipe;
+
+                    if (pipe == null) continue;
+
+                    var handle = pipe.Handle.Value;
+
+                    try
+                    {
+                        double startInv =
+                            DesignSheet.XlApp.WorksheetFunction.VLookup(handle, sheetRange, startInvCol.Column, false) ?? 0;
+
+                        double endInv =
+                            DesignSheet.XlApp.WorksheetFunction.VLookup(handle, sheetRange, endInvCol.Column, false) ??
+                            0;
+
+                        pipe.StartPoint = new Point3d(pipe.StartPoint.X, pipe.StartPoint.Y, startInv);
+                        pipe.EndPoint = new Point3d(pipe.EndPoint.X,pipe.EndPoint.Y,endInv);
+                    }
+                    catch ( COMException )
+                    {
+                        continue;
+                    }
+
+                }
+
+                ts.Commit();
+            }
+
         }
 
         #endregion

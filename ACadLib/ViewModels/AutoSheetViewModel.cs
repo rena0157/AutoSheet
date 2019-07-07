@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using ACadLib.Utilities;
 using Autodesk.Civil.DatabaseServices;
+using MessageBox = System.Windows.MessageBox;
 
 namespace ACadLib.ViewModels
 {
@@ -52,15 +53,26 @@ namespace ACadLib.ViewModels
             _pipeNetworks = new Dictionary<string, Network>();
 
             BrowseCommand = new CommandBase(() => { CurrentPath = GetFileNameFileDialog(); });
-            UpdateCommand = new CommandBase((() => {AutoSheet.OpenDesignSheet(CurrentPath);}));
+            OpenDesignSheetCommand = new CommandBase((() => {AutoSheet.OpenDesignSheet(CurrentPath);}));
+
+            // Run the Export Command
             ExportCommand = new CommandBase(() =>
             {
-                AutoSheet.ExportPipeData(PipeNetworks[SelectedNetworkName]);
+                if ( SelectedNetworkName != null )
+                    AutoSheet.ExportPipeData(PipeNetworks[SelectedNetworkName]);
+                else
+                    MessageBox.Show("You must select a network", "AutoSheet Error", MessageBoxButton.OK);
             });
 
+            // Run the import command
+            ImportCommand = new CommandBase(() =>
+            {
+                if ( SelectedNetworkName != null )
+                    AutoSheet.ImportPipeData(PipeNetworks[SelectedNetworkName]);
+                else
+                    MessageBox.Show("You must select a network", "AutoSheet Error", MessageBoxButton.OK);
+            });
         }
-
-
 
         #endregion
 
@@ -120,9 +132,20 @@ namespace ACadLib.ViewModels
         /// </summary>
         public ICommand BrowseCommand { get; set; }
 
-        public ICommand UpdateCommand { get; set; }
+        /// <summary>
+        /// Command That Opens the Current Selected Design Sheet
+        /// </summary>
+        public ICommand OpenDesignSheetCommand { get; set; }
 
+        /// <summary>
+        /// Export Data to the Design Sheet Command
+        /// </summary>
         public ICommand ExportCommand { get; set; }
+
+        /// <summary>
+        /// Import Data from the Design Sheet Command
+        /// </summary>
+        public ICommand ImportCommand { get; set; }
 
         #endregion
 
