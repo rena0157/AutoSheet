@@ -2,3 +2,4 @@ SECURELOAD
 0
 NETLOAD "C:\Dev\AutoSheet\ACadLib\bin\Debug\ACadLib.dll"
 OPEN "C:\Dev\AutoSheet\Excel\TestDwg.dwg"
+AUTOSHEET
