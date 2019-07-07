@@ -203,7 +203,15 @@ namespace ACadLib
                         pipe.StartPoint = new Point3d(pipe.StartPoint.X, pipe.StartPoint.Y, startInv);
                         pipe.EndPoint = new Point3d(pipe.EndPoint.X,pipe.EndPoint.Y,endInv);
 
-                        // TODO: Need to reconnect the structures to the pipes
+                        // Disconnect and Reconnect the Start Structure
+                        var startStructureId = pipe.StartStructureId;
+                        pipe.Disconnect(ConnectorPositionType.Start);
+                        pipe.ConnectToStructure(ConnectorPositionType.Start, startStructureId, true);
+
+                        // Disconnect and Reconnect the End Structure
+                        var endStructureId = pipe.EndStructureId;
+                        pipe.Disconnect(ConnectorPositionType.End);
+                        pipe.ConnectToStructure(ConnectorPositionType.End, endStructureId, true);
                     }
                     catch ( COMException )
                     {
