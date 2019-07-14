@@ -139,11 +139,18 @@ namespace ACadLib
                     Range lengthCell = DataSheet.LengthRange[rowNumber];
                     Range diameterCell = DataSheet.InnerDiameterRange[rowNumber];
 
-                    handleCell.Value2 = pipe.Handle;
+                    handleCell.Value2 = pipe.Handle.Value;
 
-                    // Get start and End Structures
-                    var startStructure = ts.GetObject(pipe.StartStructureId, OpenMode.ForRead) as Structure;
-                    var endStructure = ts.GetObject(pipe.EndStructureId, OpenMode.ForRead) as Structure;
+                    // Get start and End Structures and test to make sure that if there is none,
+                    // that no errors are thrown
+                    var startStructure = pipe.StartStructureId.IsNull
+                        ? null
+                        : ts.GetObject(pipe.StartStructureId, OpenMode.ForRead) as Structure;
+
+                    var endStructure = pipe.EndStructureId.IsNull
+                        ? null
+                        : ts.GetObject(pipe.EndStructureId, OpenMode.ForRead) as Structure;
+                    
 
                     // Set Start and End Structure Names
                     fromCell.Value2 = startStructure == null ? "null" : startStructure.Name;
@@ -197,8 +204,8 @@ namespace ACadLib
                                             .VLookup(handle, DataSheet.PipeDataRange, DataSheet.EndInvRange.Column, false) ?? 0;
 
                         // Set new Start and End Points for the Pipe
-                        pipe.StartPoint = new Point3d(pipe.StartPoint.X, pipe.StartPoint.Y, startInv);
-                        pipe.EndPoint = new Point3d(pipe.EndPoint.X,pipe.EndPoint.Y,endInv);
+                        pipe.StartPoint = new Point3d(pipe.StartPoint.X, pipe.StartPoint.Y, startInv + pipe.OuterDiameterOrWidth/2 - pipe.WallThickness);
+                        pipe.EndPoint = new Point3d(pipe.EndPoint.X,pipe.EndPoint.Y,endInv + pipe.OuterDiameterOrWidth/2 - pipe.WallThickness);
 
                         // Disconnect and Reconnect the Start Structure
                         var startStructureId = pipe.StartStructureId;

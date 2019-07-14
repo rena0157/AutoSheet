@@ -50,9 +50,9 @@ namespace ACadLib.Utilities
                 return;
             }
 
-            if ( !File.Exists(filename) || Path.GetExtension(filename) != ".xlsx" )
+            if ( !File.Exists(filename) || Path.GetExtension(filename) != ".xlsm" )
             {
-                MessageBox.Show($"Error Opening File: {filename}", "AUTOSHEET ERROR", MessageBoxButton.OK);
+                MessageBox.Show($"Error Opening File: {filename} doesn't exist or is the wrong file extension", "AUTOSHEET ERROR", MessageBoxButton.OK);
                 return;
             }
 
@@ -76,7 +76,14 @@ namespace ACadLib.Utilities
             XlWorkbookNames = new Dictionary<string, Range>();
             foreach ( Name name in _xlWorkbook.Names )
             {
-                XlWorkbookNames.Add(name.Name, name.RefersToRange);
+                try
+                {
+                    XlWorkbookNames.Add(name.Name, name.RefersToRange);
+                }
+                catch ( COMException e )
+                {
+                    Debug.WriteLine($"DesignSheet Class threw {e.GetType()}: {e} when loading name in Dictionary");
+                }
             }
         }
 
