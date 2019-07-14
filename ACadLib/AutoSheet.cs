@@ -61,7 +61,7 @@ namespace ACadLib
         /// <summary>
         /// The Current Design Sheet
         /// </summary>
-        public static DesignSheet DesignSheet { get; private set; }
+        public static PipeDataSheet DataSheet { get; private set; }
 
         #endregion
 
@@ -84,24 +84,24 @@ namespace ACadLib
         public static void OpenDesignSheet(string filePath)
         {
             // Check to make sure that the workbook isn't already open
-            if ( DesignSheet != null )
+            if ( DataSheet != null )
             {
-                if ( DesignSheet.IsReady() ) return;
+                if ( DataSheet.IsReady() ) return;
                 // Dispose the Design Sheet and reopen
-                DesignSheet.Dispose();
-                DesignSheet = null;
+                DataSheet.Dispose();
+                DataSheet = null;
             }
             try
             {
-                DesignSheet 
-                    = new DesignSheet(filePath, "PipeDataXlOut", "PipeDataXlIn");
-                if ( !DesignSheet.IsReady() )
-                    DesignSheet = null;
+                DataSheet 
+                    = new PipeDataSheet(filePath, PipeDataSheet.PipeDataSheetName);
+                if ( !DataSheet.IsReady() )
+                    DataSheet = null;
 
             }
-            catch (COMException e)
+            catch (COMException)
             {
-                DesignSheet = null;
+                DataSheet = null;
             }
         }
 
@@ -114,22 +114,9 @@ namespace ACadLib
         {
             // If there is no active design sheet then nothing can be
             // exported
-            if (DesignSheet == null) return;
+            if (DataSheet == null) return;
 
-            // Get the right tab from the design sheet
-            var xlIn = DesignSheet.PipeDataXlIn;
-
-            // Column Constants
-            const char handleColumn = 'A';
-            const char fromColumn = 'B';
-            const char toColumn = 'C';
-            const char lengthColumn = 'D';
-            const char slopeColumn = 'E';
-            const char innerDiaColumn = 'F';
-            const char startInvColumn = 'G';
-            const char endInvColumn = 'H';
-
-            // The current row/pipe number
+            // The current row/pipe number (Starts at 2 because of headers)
             var rowNumber = 2;
 
             // All of the pipe Ids from the network
@@ -141,22 +128,30 @@ namespace ACadLib
                 foreach ( ObjectId id in pipesIds )
                 {
                     var pipe = ts.GetObject(id, OpenMode.ForRead) as Pipe;
-                    if (pipe != null)
-                        xlIn.Range[$"{handleColumn}{rowNumber}"].Value2 = pipe.Handle.Value;
-                    
+
+                    // If the Id is invalid then continue
+                    if (pipe == null) continue;
+
+                    // Get all ranges and cells
+                    Range handleCell = DataSheet.HandleRange[rowNumber];
+                    Range fromCell = DataSheet.FromRange[rowNumber];
+                    Range toCell = DataSheet.ToRange[rowNumber];
+                    Range lengthCell = DataSheet.LengthRange[rowNumber];
+                    Range diameterCell = DataSheet.InnerDiameterRange[rowNumber];
+
+                    handleCell.Value2 = pipe.Handle;
+
+                    // Get start and End Structures
                     var startStructure = ts.GetObject(pipe.StartStructureId, OpenMode.ForRead) as Structure;
-                    if (startStructure != null)
-                        xlIn.Range[$"{fromColumn}{rowNumber}"].Value2 = startStructure.Name;
-
                     var endStructure = ts.GetObject(pipe.EndStructureId, OpenMode.ForRead) as Structure;
-                    if (endStructure != null)
-                        xlIn.Range[$"{toColumn}{rowNumber}"].Value2 = endStructure.Name;
 
-                    xlIn.Range[$"{lengthColumn}{rowNumber}"].Value2 = pipe.Length2DCenterToCenter;
-                    xlIn.Range[$"{slopeColumn}{rowNumber}"].Value2 = pipe.Slope;
-                    xlIn.Range[$"{innerDiaColumn}{rowNumber}"].Value2 = pipe.InnerDiameterOrWidth;
-                    xlIn.Range[$"{startInvColumn}{rowNumber}"].Value2 = pipe.StartPoint.Z;
-                    xlIn.Range[$"{endInvColumn}{rowNumber}"].Value2 = pipe.EndPoint.Z;
+                    // Set Start and End Structure Names
+                    fromCell.Value2 = startStructure == null ? "null" : startStructure.Name;
+                    toCell.Value2 = endStructure == null ? "null" : endStructure.Name;
+
+                    // Set the length and diameter values
+                    lengthCell.Value2 = pipe.Length2DCenterToCenter;
+                    diameterCell.Value2 = pipe.InnerDiameterOrWidth;
 
                     // Increment to the next row for the next pipe
                     rowNumber++;
@@ -171,12 +166,8 @@ namespace ACadLib
         public static void ImportPipeData(Network network)
         {
             // If the design sheet is null or not ready return
-            if (DesignSheet == null || !DesignSheet.IsReady()) return;
+            if (DataSheet == null || !DataSheet.IsReady()) return;
 
-            // Ranges
-            var sheetRange = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOut];
-            var startInvCol = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOutStartInv];
-            var endInvCol = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOutEndInv];
 
             using ( var ts = BootstrapApp.TransManager.StartTransaction() )
             {
@@ -193,13 +184,19 @@ namespace ACadLib
 
                     try
                     {
-                        double startInv =
-                            DesignSheet.XlApp.WorksheetFunction.VLookup(handle, sheetRange, startInvCol.Column, false) ?? 0;
+                        // Get that start Invert from the DataSheet
+                        double startInv = DataSheet
+                                            .XlApp
+                                            .WorksheetFunction
+                                            .VLookup(handle, DataSheet.PipeDataRange, DataSheet.StartInvRange.Column, false) ?? 0;
 
-                        double endInv =
-                            DesignSheet.XlApp.WorksheetFunction.VLookup(handle, sheetRange, endInvCol.Column, false) ??
-                            0;
+                        // Get the End Invert from the DataSheet
+                        double endInv = DataSheet
+                                            .XlApp
+                                            .WorksheetFunction
+                                            .VLookup(handle, DataSheet.PipeDataRange, DataSheet.EndInvRange.Column, false) ?? 0;
 
+                        // Set new Start and End Points for the Pipe
                         pipe.StartPoint = new Point3d(pipe.StartPoint.X, pipe.StartPoint.Y, startInv);
                         pipe.EndPoint = new Point3d(pipe.EndPoint.X,pipe.EndPoint.Y,endInv);
 
@@ -215,6 +212,7 @@ namespace ACadLib
                     }
                     catch ( COMException )
                     {
+
                     }
                 }
 
@@ -238,9 +236,9 @@ namespace ACadLib
         {
             _autoSheetMainWindow = null;
 
-            if ( DesignSheet == null ) return;
-            DesignSheet.Dispose();
-            DesignSheet = null;
+            if ( DataSheet == null ) return;
+            DataSheet.Dispose();
+            DataSheet = null;
 
         }
 
