@@ -74,6 +74,7 @@
   <ItemGroup>
     <Compile Include="AutoSheet.cs" />
     <Compile Include="BootstrapApp.cs" />
+    <Compile Include="Exceptions\ErrorHandler.cs" />
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\ACadLogger.cs" />

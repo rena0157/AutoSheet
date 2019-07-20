@@ -30,19 +30,19 @@ namespace ACadLib.Utilities
         /// <summary>
         /// The PipeData Worksheet
         /// </summary>
-        public readonly Worksheet PipeDataSheet;
+        private readonly Worksheet _pipeDataSheet;
 
         /// <summary>
         /// Dictionary of Named Ranges
         /// </summary>
-        public Dictionary<string, Range> XlWorkbookNames { get; }
+        protected Dictionary<string, Range> XlWorkbookNames { get; }
 
         /// <summary>
         /// Default Constructor
         /// </summary>
         /// <param name="filename">Workbook filename</param>
         /// <param name="pipeDataSheetName">The pipe data in sheet name</param>
-        public DesignSheet(string filename, string pipeDataSheetName)
+        protected DesignSheet(string filename, string pipeDataSheetName)
         {
             if ( filename == null )
             {
@@ -62,14 +62,14 @@ namespace ACadLib.Utilities
             };
 
             _xlWorkbook = null;
-            PipeDataSheet = null;
+            _pipeDataSheet = null;
 
             _xlWorkbook = XlApp.Workbooks.Open(filename);
 
             // Get the worksheets
-            PipeDataSheet = _xlWorkbook.Worksheets[pipeDataSheetName];
+            _pipeDataSheet = _xlWorkbook.Worksheets[pipeDataSheetName];
 
-            if (_xlWorkbook == null || PipeDataSheet == null)
+            if (_xlWorkbook == null || _pipeDataSheet == null)
                 throw new COMException();
 
             // Get and Set the Workbook names
@@ -147,8 +147,8 @@ namespace ACadLib.Utilities
         /// </summary>
         private void ReleaseUnmanagedResources()
         {
-            if ( PipeDataSheet != null )
-                Marshal.FinalReleaseComObject(PipeDataSheet);
+            if ( _pipeDataSheet != null )
+                Marshal.FinalReleaseComObject(_pipeDataSheet);
 
             if (_xlWorkbook != null)
                 Marshal.FinalReleaseComObject(_xlWorkbook);

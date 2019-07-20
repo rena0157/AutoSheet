@@ -84,6 +84,18 @@ namespace ACadLib.Utilities
 
         #endregion
 
+        /// <summary>
+        /// Get a range from a column in the PipeData Sheet
+        /// </summary>
+        /// <param name="columnNumber">The column Number (A = 1)</param>
+        /// <param name="upperBound">The upper bound of the Rows (Inclusive)</param>
+        /// <param name="lowerBound">The lower bound of the Rows (Inclusive)</param>
+        /// <returns>Returns: A range that represents a sub range of the column number that was passed</returns>
+        public Range GetRangeFromColumn(int columnNumber, int upperBound, int lowerBound)
+        {
+            var columnA1 = (char) ( columnNumber - 1 + 'A' );
+            return PipeDataRange.Range[$"{columnA1}{upperBound}:{columnA1}{lowerBound}"];
+        }
 
         #region Constructors
 
