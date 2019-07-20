@@ -47,8 +47,12 @@ namespace ACadLib
 
             using (var ts = BootstrapApp.TransManager.StartTransaction())
             {
-                foreach (ObjectId networkId in pipeNetworkIds)
-                    pipeNetworks.Add(ts.GetObject(networkId, OpenMode.ForRead) as Network);
+                pipeNetworks.AddRange
+                (
+                    from ObjectId networkId in pipeNetworkIds
+                    select ts.GetObject(networkId, OpenMode.ForRead)
+                    as Network
+                );
             }
 
             return pipeNetworks;
@@ -61,7 +65,7 @@ namespace ACadLib
         /// <summary>
         /// The Current Design Sheet
         /// </summary>
-        public static DesignSheet DesignSheet { get; private set; }
+        public static PipeDataSheet DataSheet { get; private set; }
 
         #endregion
 
@@ -84,24 +88,23 @@ namespace ACadLib
         public static void OpenDesignSheet(string filePath)
         {
             // Check to make sure that the workbook isn't already open
-            if ( DesignSheet != null )
+            if (DataSheet != null && !DataSheet.IsReady())
             {
-                if ( DesignSheet.IsReady() ) return;
-                // Dispose the Design Sheet and reopen
-                DesignSheet.Dispose();
-                DesignSheet = null;
+                DataSheet.Dispose();
+                DataSheet = null;
             }
             try
             {
-                DesignSheet 
-                    = new DesignSheet(filePath, "PipeDataXlOut", "PipeDataXlIn");
-                if ( !DesignSheet.IsReady() )
-                    DesignSheet = null;
+                DataSheet
+                    = new PipeDataSheet(filePath, PipeDataSheet.PipeDataSheetName);
 
+                // Test to see if it succeeded
+                if (!DataSheet.IsReady())
+                    DataSheet = null;
             }
-            catch (COMException e)
+            catch (COMException)
             {
-                DesignSheet = null;
+                DataSheet = null;
             }
         }
 
@@ -113,54 +116,71 @@ namespace ACadLib
         public static void ExportPipeData(Network pipeNetwork)
         {
             // If there is no active design sheet then nothing can be
-            // exported
-            if (DesignSheet == null) return;
+            // exported so exit the function
+            if (DataSheet == null) return;
 
-            // Get the right tab from the design sheet
-            var xlIn = DesignSheet.PipeDataXlIn;
-
-            // Column Constants
-            const char handleColumn = 'A';
-            const char fromColumn = 'B';
-            const char toColumn = 'C';
-            const char lengthColumn = 'D';
-            const char slopeColumn = 'E';
-            const char innerDiaColumn = 'F';
-            const char startInvColumn = 'G';
-            const char endInvColumn = 'H';
-
-            // The current row/pipe number
-            var rowNumber = 2;
-
-            // All of the pipe Ids from the network
+            // Row number starts at 0 to reference the data at 0 in the arrays
+            // The actual row data in the excel sheet should start at row 2
+            var rowNumber = 0;
             var pipesIds = pipeNetwork.GetPipeIds();
 
-            // Access all of the data and place it into the excel sheet
             using (var ts = BootstrapApp.TransManager.StartTransaction())
             {
-                foreach ( ObjectId id in pipesIds )
+                // Arrays for the different attributes of a pipe
+                var handleArray = new object[pipesIds.Count, 1];
+                var fromArray = new object[pipesIds.Count, 1];
+                var toArray = new object[pipesIds.Count, 1];
+                var lengthArray = new object[pipesIds.Count, 1];
+                var diameterArray = new object[pipesIds.Count, 1];
+
+                foreach (ObjectId id in pipesIds)
                 {
                     var pipe = ts.GetObject(id, OpenMode.ForRead) as Pipe;
-                    if (pipe != null)
-                        xlIn.Range[$"{handleColumn}{rowNumber}"].Value2 = pipe.Handle.Value;
-                    
-                    var startStructure = ts.GetObject(pipe.StartStructureId, OpenMode.ForRead) as Structure;
-                    if (startStructure != null)
-                        xlIn.Range[$"{fromColumn}{rowNumber}"].Value2 = startStructure.Name;
 
-                    var endStructure = ts.GetObject(pipe.EndStructureId, OpenMode.ForRead) as Structure;
-                    if (endStructure != null)
-                        xlIn.Range[$"{toColumn}{rowNumber}"].Value2 = endStructure.Name;
+                    // If we cannot access the pipe then skip it
+                    if (pipe == null) continue;
 
-                    xlIn.Range[$"{lengthColumn}{rowNumber}"].Value2 = pipe.Length2DCenterToCenter;
-                    xlIn.Range[$"{slopeColumn}{rowNumber}"].Value2 = pipe.Slope;
-                    xlIn.Range[$"{innerDiaColumn}{rowNumber}"].Value2 = pipe.InnerDiameterOrWidth;
-                    xlIn.Range[$"{startInvColumn}{rowNumber}"].Value2 = pipe.StartPoint.Z;
-                    xlIn.Range[$"{endInvColumn}{rowNumber}"].Value2 = pipe.EndPoint.Z;
+                    handleArray[rowNumber, 0] = pipe.Handle.Value;
 
-                    // Increment to the next row for the next pipe
+                    // Get start and End Structures and test to make sure that if there is none,
+                    // that no errors are thrown
+                    var startStructure = pipe.StartStructureId.IsNull
+                        ? null
+                        : ts.GetObject(pipe.StartStructureId, OpenMode.ForRead) as Structure;
+
+                    var endStructure = pipe.EndStructureId.IsNull
+                        ? null
+                        : ts.GetObject(pipe.EndStructureId, OpenMode.ForRead) as Structure;
+
+                    fromArray[rowNumber, 0] = startStructure == null ? "null" : startStructure.Name;
+                    toArray[rowNumber, 0] = endStructure == null ? "null" : endStructure.Name;
+
+                    lengthArray[rowNumber, 0] = pipe.Length2DCenterToCenter;
+                    diameterArray[rowNumber, 0] = pipe.InnerDiameterOrWidth;
+
+                    // Increment so that the next row can be filled out
                     rowNumber++;
                 }
+
+                DataSheet.GetRangeFromColumn(
+                        DataSheet.HandleRange.Column, 2, pipesIds.Count + 1)
+                        .Value2 = handleArray;
+
+                DataSheet.GetRangeFromColumn(
+                        DataSheet.FromRange.Column, 2, pipesIds.Count + 1)
+                        .Value2 = fromArray;
+
+                DataSheet.GetRangeFromColumn(
+                        DataSheet.ToRange.Column, 2, pipesIds.Count + 1)
+                        .Value2 = toArray;
+
+                DataSheet.GetRangeFromColumn(
+                        DataSheet.LengthRange.Column, 2, pipesIds.Count + 1)
+                        .Value2 = lengthArray;
+
+                DataSheet.GetRangeFromColumn(
+                        DataSheet.InnerDiameterRange.Column, 2, pipesIds.Count + 1)
+                        .Value2 = diameterArray;
             }
         }
 
@@ -171,19 +191,15 @@ namespace ACadLib
         public static void ImportPipeData(Network network)
         {
             // If the design sheet is null or not ready return
-            if (DesignSheet == null || !DesignSheet.IsReady()) return;
+            if (DataSheet == null || !DataSheet.IsReady()) return;
 
-            // Ranges
-            var sheetRange = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOut];
-            var startInvCol = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOutStartInv];
-            var endInvCol = DesignSheet.XlWorkbookNames[DesignSheet.NamedRanges.PipeDataXlOutEndInv];
 
-            using ( var ts = BootstrapApp.TransManager.StartTransaction() )
+            using (var ts = BootstrapApp.TransManager.StartTransaction())
             {
                 BootstrapApp.ActiveDocument.LockDocument();
                 var pipeIds = network.GetPipeIds();
 
-                foreach ( ObjectId pipeId in pipeIds )
+                foreach (ObjectId pipeId in pipeIds)
                 {
                     var pipe = ts.GetObject(pipeId, OpenMode.ForWrite) as Pipe;
 
@@ -193,30 +209,57 @@ namespace ACadLib
 
                     try
                     {
-                        double startInv =
-                            DesignSheet.XlApp.WorksheetFunction.VLookup(handle, sheetRange, startInvCol.Column, false) ?? 0;
+                        // Get that start Invert from the DataSheet
+                        double startInv = DataSheet
+                                            .XlApp
+                                            .WorksheetFunction
+                                            .VLookup(handle, DataSheet.PipeDataRange, DataSheet.StartInvRange.Column, false) ?? 0;
 
-                        double endInv =
-                            DesignSheet.XlApp.WorksheetFunction.VLookup(handle, sheetRange, endInvCol.Column, false) ??
-                            0;
+                        // Get the End Invert from the DataSheet
+                        double endInv = DataSheet
+                                            .XlApp
+                                            .WorksheetFunction
+                                            .VLookup(handle, DataSheet.PipeDataRange, DataSheet.EndInvRange.Column, false) ?? 0;
 
-                        pipe.StartPoint = new Point3d(pipe.StartPoint.X, pipe.StartPoint.Y, startInv);
-                        pipe.EndPoint = new Point3d(pipe.EndPoint.X,pipe.EndPoint.Y,endInv);
+                        // Set new Start and End Points for the Pipe
+                        pipe.StartPoint = new Point3d(pipe.StartPoint.X, pipe.StartPoint.Y, startInv + pipe.OuterDiameterOrWidth / 2 - pipe.WallThickness);
+                        pipe.EndPoint = new Point3d(pipe.EndPoint.X, pipe.EndPoint.Y, endInv + pipe.OuterDiameterOrWidth / 2 - pipe.WallThickness);
 
                         // Disconnect and Reconnect the Start Structure
                         var startStructureId = pipe.StartStructureId;
                         pipe.Disconnect(ConnectorPositionType.Start);
                         pipe.ConnectToStructure(ConnectorPositionType.Start, startStructureId, true);
 
+                        var startStructure = ts.GetObject(startStructureId, OpenMode.ForWrite) as Structure;
+                        if ( startStructure != null )
+                        {
+                            startStructure.ControlSumpBy = StructureControlSumpType.ByDepth;
+                            startStructure.SumpDepth = 0.3;
+                        }
+
+
                         // Disconnect and Reconnect the End Structure
                         var endStructureId = pipe.EndStructureId;
                         pipe.Disconnect(ConnectorPositionType.End);
                         pipe.ConnectToStructure(ConnectorPositionType.End, endStructureId, true);
+
+                        var endStructure = ts.GetObject(endStructureId, OpenMode.ForWrite) as Structure;
+
+                        if ( endStructure != null )
+                        {
+                            endStructure.ControlSumpBy = StructureControlSumpType.ByDepth;
+                            endStructure.SumpDepth = 0.3;
+                        }
+
+                        pipe.HoldOnResizeType = HoldOnResizeType.Crown;
+
                     }
-                    catch ( COMException )
+                    catch (COMException)
                     {
+                        ts.Abort();
                     }
                 }
+                BootstrapApp.ActiveDocument.Editor.Regen();
 
                 // Commit the changes to the database
                 ts.Commit();
@@ -238,9 +281,9 @@ namespace ACadLib
         {
             _autoSheetMainWindow = null;
 
-            if ( DesignSheet == null ) return;
-            DesignSheet.Dispose();
-            DesignSheet = null;
+            if (DataSheet == null) return;
+            DataSheet.Dispose();
+            DataSheet = null;
 
         }
 

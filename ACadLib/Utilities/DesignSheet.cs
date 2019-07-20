@@ -28,58 +28,21 @@ namespace ACadLib.Utilities
         private readonly Workbook _xlWorkbook;
 
         /// <summary>
-        /// Worksheet that AutoCAD Will read from
+        /// The PipeData Worksheet
         /// </summary>
-        private readonly Worksheet _pipeDataXlOut;
-
-        /// <summary>
-        /// Worksheet that AutoCAD Will write to
-        /// </summary>
-        public readonly Worksheet PipeDataXlIn;
+        private readonly Worksheet _pipeDataSheet;
 
         /// <summary>
         /// Dictionary of Named Ranges
         /// </summary>
-        public Dictionary<string, Range> XlWorkbookNames { get; }
-
-        /// <summary>
-        /// Static class containing the Named Ranges in this Design Sheet
-        /// </summary>
-        public static class NamedRanges
-        {
-            /// <summary>
-            /// The whole Sheet of PipeDataXlOut
-            /// </summary>
-            public const string PipeDataXlOut = "PipeDataXlOut";
-
-            public const string PipeDataXlIn = "PipeDataXlIn";
-
-            public const string PipeDataXlInEndInvert = "PipeDataXlIn.EndInvert";
-
-            public const string PipeDataXlInFrom = "PipeDataXlIn.From";
-
-            public const string PipeDataXlInTo = "PipeDataXlIn.To";
-
-            public const string PipeDataXlInHandle = "PipeDataXlIn.Handle";
-
-            public const string PipeDataXlInInnerDiameter = "PipeDataXlIn.InnerDiameter";
-
-            public const string PipeDataXlOutSlope = "PipeDataXlOut.Slope";
-
-            public const string PipeDataXlOutHandle = "PipeDataXlOut.Handle";
-
-            public const string PipeDataXlOutStartInv = "PipeDataXlOut.StartInvert";
-
-            public const string PipeDataXlOutEndInv = "PipeDataXlOut.EndInvert";
-        }
+        protected Dictionary<string, Range> XlWorkbookNames { get; }
 
         /// <summary>
         /// Default Constructor
         /// </summary>
         /// <param name="filename">Workbook filename</param>
-        /// <param name="pipeDataXlOut">The pipe data out sheet name</param>
-        /// <param name="pipeDataXlIn">The pipe data in sheet name</param>
-        public DesignSheet(string filename, string pipeDataXlOut, string pipeDataXlIn)
+        /// <param name="pipeDataSheetName">The pipe data in sheet name</param>
+        protected DesignSheet(string filename, string pipeDataSheetName)
         {
             if ( filename == null )
             {
@@ -87,9 +50,9 @@ namespace ACadLib.Utilities
                 return;
             }
 
-            if ( !File.Exists(filename) || Path.GetExtension(filename) != ".xlsx" )
+            if ( !File.Exists(filename) || Path.GetExtension(filename) != ".xlsm" )
             {
-                MessageBox.Show($"Error Opening File: {filename}", "AUTOSHEET ERROR", MessageBoxButton.OK);
+                MessageBox.Show($"Error Opening File: {filename} doesn't exist or is the wrong file extension", "AUTOSHEET ERROR", MessageBoxButton.OK);
                 return;
             }
 
@@ -99,26 +62,29 @@ namespace ACadLib.Utilities
             };
 
             _xlWorkbook = null;
-            _pipeDataXlOut = null;
-            PipeDataXlIn = null;
+            _pipeDataSheet = null;
 
             _xlWorkbook = XlApp.Workbooks.Open(filename);
 
             // Get the worksheets
-            _pipeDataXlOut = _xlWorkbook.Worksheets[pipeDataXlOut];
-            PipeDataXlIn = _xlWorkbook.Worksheets[pipeDataXlIn];
+            _pipeDataSheet = _xlWorkbook.Worksheets[pipeDataSheetName];
 
-            if (_xlWorkbook == null || _pipeDataXlOut == null || PipeDataXlIn == null)
+            if (_xlWorkbook == null || _pipeDataSheet == null)
                 throw new COMException();
 
             // Get and Set the Workbook names
             XlWorkbookNames = new Dictionary<string, Range>();
             foreach ( Name name in _xlWorkbook.Names )
             {
-                XlWorkbookNames.Add(name.Name, name.RefersToRange);
+                try
+                {
+                    XlWorkbookNames.Add(name.Name, name.RefersToRange);
+                }
+                catch ( COMException e )
+                {
+                    Debug.WriteLine($"DesignSheet Class threw {e.GetType()}: {e} when loading name in Dictionary");
+                }
             }
-
-            ACadLogger.Log("Pipe Data Sheet Opened");
         }
 
         /// <summary>
@@ -181,11 +147,8 @@ namespace ACadLib.Utilities
         /// </summary>
         private void ReleaseUnmanagedResources()
         {
-            if ( _pipeDataXlOut != null )
-                Marshal.FinalReleaseComObject(_pipeDataXlOut);
-
-            if ( PipeDataXlIn != null )
-                Marshal.FinalReleaseComObject(PipeDataXlIn);
+            if ( _pipeDataSheet != null )
+                Marshal.FinalReleaseComObject(_pipeDataSheet);
 
             if (_xlWorkbook != null)
                 Marshal.FinalReleaseComObject(_xlWorkbook);

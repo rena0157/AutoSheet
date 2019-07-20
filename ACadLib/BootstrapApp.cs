@@ -1,10 +1,13 @@
-﻿using System;
+﻿// BootstrapApp.cs
+// By: Adam Renaud
+// Created: July 2019
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Autodesk.AutoCAD.Runtime;
-
 using System.Diagnostics;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
@@ -12,7 +15,6 @@ using Autodesk.AutoCAD;
 using Autodesk.Civil.ApplicationServices;
 using Autodesk.Civil.DatabaseServices;
 using TransactionManager = Autodesk.AutoCAD.DatabaseServices.TransactionManager;
-
 using ACadLib.Utilities;
 using Application = Autodesk.AutoCAD.ApplicationServices.Core.Application;
 
@@ -24,10 +26,12 @@ namespace ACadLib
     // ReSharper disable once ClassNeverInstantiated.Global
     public class BootstrapApp : IExtensionApplication
     {
+        #region Static AutoCAD Properties
+
         /// <summary>
         /// The Active Document for core AutoCAD Functions
         /// </summary>
-        public static Document ActiveDocument 
+        public static Document ActiveDocument
             => Application.DocumentManager.MdiActiveDocument;
 
         /// <summary>
@@ -42,6 +46,10 @@ namespace ACadLib
         public static CivilDocument CivilDoc
             => CivilApplication.ActiveDocument;
 
+        #endregion
+
+        #region IExtension Methods
+
         /// <summary>
         /// Initialization Function for the application
         /// </summary>
@@ -55,9 +63,11 @@ namespace ACadLib
         /// </summary>
         public void Terminate()
         {
-            if (AutoSheet.DesignSheet != null)
-                AutoSheet.DesignSheet.Dispose();
+            if (AutoSheet.DataSheet != null)
+                AutoSheet.DataSheet.Dispose();
         }
+
+        #endregion
 
         #region Command Methods
 

@@ -186,11 +186,11 @@ namespace ACadLib.ViewModels
                 return false;
             }
 
-            if (AutoSheet.DesignSheet == null || !AutoSheet.DesignSheet.IsReady())
+            if (AutoSheet.DataSheet == null || !AutoSheet.DataSheet.IsReady())
                 AutoSheet.OpenDesignSheet(CurrentPath);
 
             // Check to see if it failed
-            return AutoSheet.DesignSheet != null;
+            return AutoSheet.DataSheet != null;
         }
 
         #endregion
