@@ -1,20 +1,16 @@
-﻿using System;
+﻿// AutoSheet.cs
+// By: Adam Renaud
+// Created: 2019-07-21
+
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
 using ACadLib.Utilities;
 using ACadLib.Views;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
-using Autodesk.AutoCAD.Runtime;
 using Autodesk.Civil.DatabaseServices;
-using Microsoft.Office.Interop.Excel;
-using DBObject = Autodesk.AutoCAD.DatabaseServices.DBObject;
 using XlApplication = Microsoft.Office.Interop.Excel.Application;
 
 namespace ACadLib
