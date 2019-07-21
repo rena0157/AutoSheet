@@ -1,6 +1,7 @@
 ﻿using ACadLib.Utilities;
 using Autodesk.Civil.DatabaseServices;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
@@ -55,10 +56,10 @@ namespace ACadLib.ViewModels
                 OpenDesignSheetHelper();
             });
 
-            OpenDesignSheetCommand = new CommandBase((() =>
-           {
-               AutoSheet.OpenDesignSheet(CurrentPath);
-           }));
+            OpenDesignSheetCommand = new CommandBase(() =>
+            {
+                AutoSheet.OpenDesignSheet(CurrentPath);
+            });
 
             // Run the Export Command
             ExportCommand = new CommandBase(() =>
@@ -68,10 +69,14 @@ namespace ACadLib.ViewModels
             });
 
             // Run the import command
-            ImportCommand = new CommandBase(() =>
+            ImportCommand = new CommandBase( () =>
             {
-                if (OpenDesignSheetHelper())
+                if ( OpenDesignSheetHelper() )
+                {
+                    // Tried to make this async but kept getting errors
+                    // await Task.Run(() => AutoSheet.ImportPipeData(PipeNetworks[SelectedNetworkName]));
                     AutoSheet.ImportPipeData(PipeNetworks[SelectedNetworkName]);
+                }
             });
         }
 
