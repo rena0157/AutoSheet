@@ -1,13 +1,11 @@
-﻿using System;
+﻿using ACadLib.Exceptions;
+using Microsoft.Office.Interop.Excel;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using Microsoft.Office.Interop.Excel;
 using XlApplication = Microsoft.Office.Interop.Excel.Application;
 
 namespace ACadLib.Utilities
@@ -44,16 +42,14 @@ namespace ACadLib.Utilities
         /// <param name="pipeDataSheetName">The pipe data in sheet name</param>
         protected DesignSheet(string filename, string pipeDataSheetName)
         {
-            if ( filename == null )
+            if (filename == null)
             {
-                MessageBox.Show("You must provide a filename", "AUTOSHEET ERROR", MessageBoxButton.OK);
-                return;
+                throw new FilenameNullException("No filename was provided");
             }
 
-            if ( !File.Exists(filename) || Path.GetExtension(filename) != ".xlsm" )
+            if (!File.Exists(filename) || Path.GetExtension(filename) != ".xlsm")
             {
-                MessageBox.Show($"Error Opening File: {filename} doesn't exist or is the wrong file extension", "AUTOSHEET ERROR", MessageBoxButton.OK);
-                return;
+                throw new FileNotFoundException("The filename provided does not exist or is the wrong file type");
             }
 
             XlApp = new XlApplication()
@@ -69,20 +65,17 @@ namespace ACadLib.Utilities
             // Get the worksheets
             _pipeDataSheet = _xlWorkbook.Worksheets[pipeDataSheetName];
 
-            if (_xlWorkbook == null || _pipeDataSheet == null)
-                throw new COMException();
-
             // Get and Set the Workbook names
             XlWorkbookNames = new Dictionary<string, Range>();
-            foreach ( Name name in _xlWorkbook.Names )
+            foreach (Name name in _xlWorkbook.Names)
             {
                 try
                 {
                     XlWorkbookNames.Add(name.Name, name.RefersToRange);
                 }
-                catch ( COMException e )
+                catch (COMException)
                 {
-                    Debug.WriteLine($"DesignSheet Class threw {e.GetType()}: {e} when loading name in Dictionary");
+
                 }
             }
         }
@@ -147,16 +140,26 @@ namespace ACadLib.Utilities
         /// </summary>
         private void ReleaseUnmanagedResources()
         {
-            if ( _pipeDataSheet != null )
+            if (_pipeDataSheet != null)
                 Marshal.FinalReleaseComObject(_pipeDataSheet);
 
             if (_xlWorkbook != null)
                 Marshal.FinalReleaseComObject(_xlWorkbook);
 
-            if ( XlApp == null ) return;
+            if (XlApp == null) return;
 
-            ExcelProcess?.Kill();
-            Marshal.FinalReleaseComObject(XlApp);
+            try
+            {
+                ExcelProcess?.Kill();
+                Marshal.FinalReleaseComObject(XlApp);
+            }
+            catch (COMException)
+            {
+                MessageBox
+                    .Show("Unable to Exit The application Correctly",
+                        "AutoSheet Error", MessageBoxButton.OK);
+            }
+
         }
 
 

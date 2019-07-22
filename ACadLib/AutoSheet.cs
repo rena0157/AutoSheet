@@ -2,16 +2,19 @@
 // By: Adam Renaud
 // Created: 2019-07-21
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
+using ACadLib.Exceptions;
 using ACadLib.Utilities;
 using ACadLib.Views;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.Civil.DatabaseServices;
-using XlApplication = Microsoft.Office.Interop.Excel.Application;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Windows.Forms;
 
 namespace ACadLib
 {
@@ -83,7 +86,9 @@ namespace ACadLib
         /// <param name="filePath">The path to the design sheet</param>
         public static void OpenDesignSheet(string filePath)
         {
-            // Check to make sure that the workbook isn't already open
+            if (DataSheet != null && DataSheet.IsReady())
+                throw new DataSheetAlreadyExists();
+
             if (DataSheet != null && !DataSheet.IsReady())
             {
                 DataSheet.Dispose();
@@ -98,9 +103,18 @@ namespace ACadLib
                 if (!DataSheet.IsReady())
                     DataSheet = null;
             }
-            catch (COMException)
+            catch (FilenameNullException)
             {
-                DataSheet = null;
+                MessageBox.Show("No Filename was provided", "AutoSheet Error", MessageBoxButtons.OK);
+            }
+            catch (FileNotFoundException)
+            {
+                MessageBox.Show("Filename provided could not be found", "AutoSheet Error", MessageBoxButtons.OK);
+            }
+            catch (COMException e)
+            {
+                MessageBox.Show($"There was an error opening the file: {e}", "AutoSheet Error", MessageBoxButtons.OK);
+                DataSheet?.Dispose();
             }
         }
 
@@ -187,8 +201,8 @@ namespace ACadLib
         public static void ImportPipeData(Network network)
         {
             // If the design sheet is null or not ready return
-            if (DataSheet == null || !DataSheet.IsReady()) return;
-
+            if (DataSheet == null || !DataSheet.IsReady() || network == null)
+                throw new ArgumentNullException();
 
             using (var ts = BootstrapApp.TransManager.StartTransaction())
             {
@@ -227,7 +241,7 @@ namespace ACadLib
                         pipe.ConnectToStructure(ConnectorPositionType.Start, startStructureId, true);
 
                         var startStructure = ts.GetObject(startStructureId, OpenMode.ForWrite) as Structure;
-                        if ( startStructure != null )
+                        if (startStructure != null)
                         {
                             startStructure.ControlSumpBy = StructureControlSumpType.ByDepth;
                             startStructure.SumpDepth = 0.3;
@@ -241,7 +255,7 @@ namespace ACadLib
 
                         var endStructure = ts.GetObject(endStructureId, OpenMode.ForWrite) as Structure;
 
-                        if ( endStructure != null )
+                        if (endStructure != null)
                         {
                             endStructure.ControlSumpBy = StructureControlSumpType.ByDepth;
                             endStructure.SumpDepth = 0.3;
@@ -250,9 +264,18 @@ namespace ACadLib
                         pipe.HoldOnResizeType = HoldOnResizeType.Crown;
 
                     }
-                    catch (COMException)
+                    catch (COMException exception)
                     {
+                        // Notify the user and then abort the transaction
+                        const string message =
+                            "There was an error importing the data into AutoCAD, " +
+                            "check to see if the pipe data table has the correct " +
+                            "handles required for the VLOOKUP to function " +
+                            "No objects have been updated " +
+                            "\n\nExporting the Network should fix this issue";
+                        MessageBox.Show($"{message}\n\n'{exception.Message}'", "AutoSheet Error", MessageBoxButtons.OK);
                         ts.Abort();
+                        return;
                     }
                 }
                 BootstrapApp.ActiveDocument.Editor.Regen();
@@ -295,6 +318,14 @@ namespace ACadLib
             }
             else
                 ACadLogger.Log("Window Already Exists");
+        }
+
+        private static bool ArePipesEqual(Pipe pipe1, Pipe pipe2)
+        {
+            if ( pipe1.Handle.Value != pipe2.Handle.Value )
+                return false;
+
+            return pipe1.StartPoint == pipe2.StartPoint && pipe1.EndPoint == pipe2.EndPoint;
         }
 
         #endregion

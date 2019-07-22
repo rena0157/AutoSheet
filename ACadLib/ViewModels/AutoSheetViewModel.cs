@@ -1,7 +1,12 @@
-﻿using ACadLib.Utilities;
+﻿// AutoSheetViewModel.cs
+// By: Adam Renaud
+// Created: 2019-07-21
+
+using ACadLib.Exceptions;
+using ACadLib.Utilities;
 using Autodesk.Civil.DatabaseServices;
+using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
@@ -9,6 +14,9 @@ using MessageBox = System.Windows.MessageBox;
 
 namespace ACadLib.ViewModels
 {
+    /// <summary>
+    /// The view model for the AutoSheet Window
+    /// </summary>
     public class AutoSheetViewModel : ViewModelBase
     {
         #region Private Fields
@@ -49,35 +57,11 @@ namespace ACadLib.ViewModels
 
             _pipeNetworks = new Dictionary<string, Network>();
 
-            // Get the filename and open it
-            BrowseCommand = new CommandBase(() =>
-            {
-                CurrentPath = GetFileNameFileDialog();
-                OpenDesignSheetHelper();
-            });
-
-            OpenDesignSheetCommand = new CommandBase(() =>
-            {
-                AutoSheet.OpenDesignSheet(CurrentPath);
-            });
-
-            // Run the Export Command
-            ExportCommand = new CommandBase(() =>
-            {
-                if (OpenDesignSheetHelper())
-                    AutoSheet.ExportPipeData(PipeNetworks[SelectedNetworkName]);
-            });
-
-            // Run the import command
-            ImportCommand = new CommandBase( () =>
-            {
-                if ( OpenDesignSheetHelper() )
-                {
-                    // Tried to make this async but kept getting errors
-                    // await Task.Run(() => AutoSheet.ImportPipeData(PipeNetworks[SelectedNetworkName]));
-                    AutoSheet.ImportPipeData(PipeNetworks[SelectedNetworkName]);
-                }
-            });
+            // Set the commands and the command methods
+            BrowseCommand = new CommandBase(BrowseCommandMethod);
+            OpenDesignSheetCommand = new CommandBase(OpenDesignSheetCommandMethod);
+            ExportCommand = new CommandBase(ExportCommandMethod);
+            ImportCommand = new CommandBase(ImportCommandMethod);
         }
 
         #endregion
@@ -159,6 +143,87 @@ namespace ACadLib.ViewModels
 
         #endregion
 
+        #region Command Methods
+
+        /// <summary>
+        /// A Command Method that runs the import command
+        /// </summary>
+        private void ImportCommandMethod()
+        {
+            // If there is no design sheet then we cannot run the command
+            if (AutoSheet.DataSheet == null || !AutoSheet.DataSheet.IsReady())
+            {
+                MessageBox.Show("You must open a design sheet first", "AutoSheet Error", MessageBoxButton.OK);
+                return;
+            }
+
+            if (SelectedNetworkName == null)
+            {
+                MessageBox.Show("You Must select a network first", "AutoSheet Error", MessageBoxButton.OK);
+                return;
+            }
+
+            try
+            {
+                AutoSheet.ImportPipeData(PipeNetworks[SelectedNetworkName]);
+            }
+            catch (ArgumentNullException)
+            {
+                MessageBox.Show("Either the Design Sheet is not open or the selected Network does not exist",
+                    "AutoSheet Error", MessageBoxButton.OK);
+            }
+
+        }
+
+        /// <summary>
+        /// Export Command Method, runs the command method for exporting
+        /// Data from Excel to AutoCAD
+        /// </summary>
+        private void ExportCommandMethod()
+        {
+            // If there is no design sheet then we cannot run the command
+            if (AutoSheet.DataSheet == null || !AutoSheet.DataSheet.IsReady())
+            {
+                MessageBox.Show("You must open a design sheet first", "AutoSheet Error", MessageBoxButton.OK);
+                return;
+            }
+
+            if (SelectedNetworkName == null)
+            {
+                MessageBox.Show("You must select a network first", "AutoSheet Error", MessageBoxButton.OK);
+                return;
+            }
+
+            AutoSheet.ExportPipeData(PipeNetworks[SelectedNetworkName]);
+        }
+
+        /// <summary>
+        /// Command Method for the Open Design Sheet Command
+        /// </summary>
+        private void OpenDesignSheetCommandMethod()
+        {
+            try
+            {
+                AutoSheet.OpenDesignSheet(CurrentPath);
+            }
+            catch (DataSheetAlreadyExists)
+            {
+                MessageBox.Show("There is already a design sheet that is open and running", "AutoSheet Error",
+                    MessageBoxButton.OK);
+            }
+        }
+
+        /// <summary>
+        /// Command Method for the Browse command
+        /// </summary>
+        private void BrowseCommandMethod()
+        {
+            CurrentPath = GetFileNameFileDialog();
+            OpenDesignSheetCommandMethod();
+        }
+
+        #endregion
+
         #region Private Methods
 
         /// <summary>
@@ -172,32 +237,13 @@ namespace ACadLib.ViewModels
             {
                 Title = "Select a Design Sheet",
                 CheckFileExists = true,
+                Filter = "Excel Macro Files (*.xlsm) | *.xlsm"
             };
 
             return dialog.ShowDialog() == DialogResult.OK ? dialog.FileName : "";
         }
 
-        /// <summary>
-        /// Helper Function that Will open the design sheet
-        /// if it is ready and there was a filename specified
-        /// </summary>
-        /// <returns>True if the design sheet is ready</returns>
-        private bool OpenDesignSheetHelper()
-        {
-            // Check to see if there is a supplied filename
-            if (SelectedNetworkName == null)
-            {
-                MessageBox.Show("Not File Specified", "AutoSheet Error", MessageBoxButton.OK);
-                return false;
-            }
-
-            if (AutoSheet.DataSheet == null || !AutoSheet.DataSheet.IsReady())
-                AutoSheet.OpenDesignSheet(CurrentPath);
-
-            // Check to see if it failed
-            return AutoSheet.DataSheet != null;
-        }
-
         #endregion
+
     }
 }

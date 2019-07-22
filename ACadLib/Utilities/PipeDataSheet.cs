@@ -74,7 +74,6 @@ namespace ACadLib.Utilities
 
         #endregion
 
-
         #region Public Members
 
         /// <summary>
@@ -83,6 +82,8 @@ namespace ACadLib.Utilities
         public const string PipeDataSheetName = "PipeData";
 
         #endregion
+
+        #region Public Methods
 
         /// <summary>
         /// Get a range from a column in the PipeData Sheet
@@ -96,6 +97,8 @@ namespace ACadLib.Utilities
             var columnA1 = (char) ( columnNumber - 1 + 'A' );
             return PipeDataRange.Range[$"{columnA1}{upperBound}:{columnA1}{lowerBound}"];
         }
+
+        #endregion
 
         #region Constructors
 
