@@ -75,7 +75,6 @@
     <Compile Include="AutoSheet.cs" />
     <Compile Include="BootstrapApp.cs" />
     <Compile Include="Exceptions\DataSheetAlreadyExists.cs" />
-    <Compile Include="Exceptions\ErrorHandler.cs" />
     <Compile Include="Exceptions\FilenameNullException.cs" />
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
