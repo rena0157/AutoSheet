@@ -63,12 +63,14 @@
 
             <TextBox HorizontalAlignment="Left" 
                      Height="26" 
-                     TextWrapping="Wrap" 
+                     TextWrapping="NoWrap" 
                      Text="{Binding CurrentPath}" 
                      VerticalAlignment="Top"
                      VerticalContentAlignment="Center"
                      MinWidth="400"
-                     IsReadOnly="True"/>
+                     MaxWidth="400"
+                     IsReadOnly="True"
+                     />
 
             <Button Content="Browse" 
                     HorizontalAlignment="Left" 
