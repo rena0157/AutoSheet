@@ -2,40 +2,31 @@
 // By: Adam Renaud
 // Created: July 2019
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Autodesk.AutoCAD.Runtime;
-using System.Diagnostics;
 using Autodesk.AutoCAD.ApplicationServices;
-using Autodesk.AutoCAD.DatabaseServices;
-using Autodesk.AutoCAD;
+using Autodesk.AutoCAD.Runtime;
 using Autodesk.Civil.ApplicationServices;
-using Autodesk.Civil.DatabaseServices;
-using TransactionManager = Autodesk.AutoCAD.DatabaseServices.TransactionManager;
-using ACadLib.Utilities;
+using System.Diagnostics;
 using Application = Autodesk.AutoCAD.ApplicationServices.Core.Application;
+using TransactionManager = Autodesk.AutoCAD.DatabaseServices.TransactionManager;
 
 namespace ACadLib
 {
     /// <summary>
     /// Main bootstrapping application for AutoCAD
     /// </summary>
-    // ReSharper disable once ClassNeverInstantiated.Global
     public class BootstrapApp : IExtensionApplication
     {
         #region Static AutoCAD Properties
 
         /// <summary>
-        /// The Active Document for core AutoCAD Functions
+        /// The Active <see cref="Document"/> for core AutoCAD Functions
         /// </summary>
         public static Document ActiveDocument
             => Application.DocumentManager.MdiActiveDocument;
 
         /// <summary>
-        /// The Transaction Manager for AutoCAD Entities
+        /// The Transaction Manager for AutoCAD Entities that
+        /// are a part of this <see cref="Document"/>
         /// </summary>
         public static TransactionManager TransManager
             => ActiveDocument.TransactionManager;
@@ -55,7 +46,7 @@ namespace ACadLib
         /// </summary>
         public void Initialize()
         {
-            ACadLogger.Log("Application Loaded");
+            Debug.WriteLine("Application Initialized");
         }
 
         /// <summary>
@@ -65,6 +56,8 @@ namespace ACadLib
         {
             if (AutoSheet.DataSheet != null)
                 AutoSheet.DataSheet.Dispose();
+
+            Debug.WriteLine("Application Terminated");
         }
 
         #endregion
@@ -78,11 +71,10 @@ namespace ACadLib
         [CommandMethod("AUTOSHEET")]
         public void AutoSheetCommand()
         {
-            ACadLogger.Log("Starting AutoSheet Command");
+            Debug.WriteLine("Starting Application");
             AutoSheet.StartApplication();
         }
 
         #endregion
-
     }
 }

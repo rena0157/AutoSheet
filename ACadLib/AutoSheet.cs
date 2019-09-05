@@ -10,7 +10,6 @@ using Autodesk.AutoCAD.Geometry;
 using Autodesk.Civil.DatabaseServices;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -37,11 +36,14 @@ namespace ACadLib
         /// <summary>
         /// Get a list of Pipe Networks from the AutoCAD Database
         /// </summary>
-        /// <returns>A List of Networks</returns>
+        /// <returns>Returns: A List of Networks</returns>
         public static IEnumerable<Network> GetPipeNetworks()
         {
+            // Get the pipe network ids
             var pipeNetworkIds = BootstrapApp.CivilDoc.GetPipeNetworkIds();
 
+            // Initialize the pipe networks list with the count of pipe
+            // networks that are expected
             var pipeNetworks = new List<Network>(pipeNetworkIds.Count);
 
             using (var ts = BootstrapApp.TransManager.StartTransaction())
@@ -77,7 +79,6 @@ namespace ACadLib
         public static void StartApplication()
         {
             CreateWindow();
-            ACadLogger.Log("AutoSheet Window Opened");
         }
 
         /// <summary>
